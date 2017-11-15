@@ -1,4 +1,4 @@
-# TF-recomm
+# TensorFlowRecommender
 ### Tensorflow-based Recommendation systems
 
 This is a TensorFlow implementation of the a factorization model for recommender systems. There are many variants of factor models, but they all assume that there are latent features in either the users, the items, or both, that capture the interactions between the two. In this project, a simple SVD algorithm is generated.
