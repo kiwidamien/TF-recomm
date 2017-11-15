@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-DATA_DIR=/tmp/movielens
+DATA_DIR=data
 SIZE=1m
 mkdir -p ${DATA_DIR}
 wget http://files.grouplens.org/datasets/movielens/ml-${SIZE}.zip -O ${DATA_DIR}/ml-${SIZE}.zip

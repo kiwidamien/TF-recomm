@@ -1,13 +1,25 @@
 # TF-recomm
 ### Tensorflow-based Recommendation systems
 
-Factorization models are very popular in recommendation systems because they can be used to discover latent features underlying the interactions between two different kinds of entities. There are many variations of factorization algorithms (SVD, SVD++, factorization machine, ...). When implementing them or developing new ones, you probably spend a lot of time on the following areas rather than modeling:
-* Derivative calculation
-* Variant SGD algorithm exploration
-* Multi-thread acceleration
-* Vectorization acceleration
+This is a TensorFlow implementation of the a factorization model for recommender systems. There are many variants of factor models, but they all assume that there are latent features in either the users, the items, or both, that capture the interactions between the two. In this project, a simple SVD algorithm is generated.
 
-[Tensorflow](https://www.tensorflow.org/) is a general computation framework using data flow graphs although deep learning is the most important application of it. With Tensorflow, derivative calculation can be done by auto differentiation, which means that you only need to write the inference part. It provides variant fancy SGD learning algorithms, CPU/GPU acceleration, and distributed training in a computer cluster. Since Tensorflow has some embedding modules for word2vc-like application, it is supposed to be a good platform for factorization models as well, even in production. Please note that embedding in deep learning is equivalent to factorization in shallow learning! 
+It is based on the excellent Github repo [TF-recomm](https://github.com/songgc/TF-recomm). This repository showed how to write a TensorFlow model that would efficiently perform mini-batch SGD (Stochastic Gradient Descent). The biggest downside is that the model would train the embedding vectors to minimize the mean squared error (MSE) between the predicted and actual ratings, and then return. In particular, the `tensorflow.session` object was closed once the MSE was found at the end of the training. Once a `tensorflow.session` closes, all information about the weights and biases found are also destroyed.
+
+To use this model to make predictions, there were two approaches:
+
+1. At the end of the `TF-recomm` training function `svd`, save the model to disk. Then restore the model later to make predictions.
+2. Rewrite the training so that the `session` isn't closed at the end.
+
+In this project, the second option has been implemented. Because the `session` holds onto values (and memory) for the entire model until closed, we made the class `TensorFlowRecommender` which is responsible  for managing the life cycle of the session. `TensorFlowRecommender` has a similar interface to BaseEstimator models in `scikitlearn`, with `fit` and `predict` functions.
+
+Other minor differences from `TF-recomm`:
+* (+) Grouped the operations, so that the visualization of the computational graph is a little cleaner
+* (+) No longer hard-coding the number of users or items, so you can use this on your own dataset
+* (+) Implemented `predictTopK` function, which will find the `K` items with the highest predicted rating for a given user
+* (-) Did not implement multiple devices (for simplicity).
+* (-?) Eliminated the file `ops.py`, moving all graph operations into the `TensorFlowRecommender` class. It could be argued that  `TensorFlowRecommender.fit` is too long as it stands.
+
+If performance is important, you should probably use the original `TF-recomm` model which utilized the GPUs, save the model, and then restore it later. This project is used to demonstrate how to use a persistent session to make predictions.
 
 ### Requirements
 * Tensorflow >= r0.12 (Since Tensorflow is changing high-level APIs frequently, please check its version if errors happen.)
@@ -28,7 +40,7 @@ The problem is to predict the rating given by user u and item i. The metric is t
 ### SVD implementation
 
 #### Graph
-Given by user u and item i, the inference of the classic SVD is 
+Given by user u and item i, the inference of the classic SVD is
 ```
 y_pred[u, i] = global__bias + bias_user[u] + bias_item_[i] + <embedding_user[u], embedding_item[i]>
 ```
@@ -37,7 +49,7 @@ The objective is to minimize
 \sum_{u, i} |y_pred[u, i] - y_true[u, i]|^2 + \lambda(|embedding_user[u]|^2 + |embedding_item[i]|^2)
 ```
 The above can be directly written by Tensorflow DSL as the [operations](https://github.com/songgc/TF-recomm/blob/master/ops.py). The Adam algorithm is used for the optimizer. The TF graph would be like
-![](doc/graph_svd.png)
+![](doc/graph_tensorboard.png)
 
 #### Run
 ```bash
